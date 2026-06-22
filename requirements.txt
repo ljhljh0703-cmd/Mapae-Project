@@ -4,7 +4,7 @@
 # Core UI
 streamlit==1.58.0
 
-# AI engine — Gemini 2.0 Flash (gemini-3-flash-preview was non-existent; corrected)
+# AI engine — Gemini 3.5 Flash (current fast model, API-verified)
 # Using new google-genai SDK; google-generativeai kept as fallback
 google-genai==2.9.0
 google-generativeai==0.8.6

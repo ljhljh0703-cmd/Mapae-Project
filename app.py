@@ -208,13 +208,13 @@ def render_sidebar():
         use_precision_mode = st.checkbox(
             "✅ 정밀 검사 모드 (NotebookLM 연동)",
             value=False,
-            help="기본: 빠른 Gemini 2.0 Flash API 사용 (일반 마켓 정책)\n체크: NotebookLM 브라우저 자동화로 심층 분석 (사내 규정 등 비공개 데이터)"
+            help="기본: 빠른 Gemini 3.5 Flash API 사용 (일반 마켓 정책)\n체크: NotebookLM 브라우저 자동화로 심층 분석 (사내 규정 등 비공개 데이터)"
         )
 
         if use_precision_mode:
             st.info("🔬 정밀 검사 모드: NotebookLM 브라우저 자동화 활성화 (느림)")
         else:
-            st.success("⚡ 빠른 모드: Gemini 2.0 Flash API 사용 (권장)")
+            st.success("⚡ 빠른 모드: Gemini 3.5 Flash API 사용 (권장)")
         
         st.divider()
         

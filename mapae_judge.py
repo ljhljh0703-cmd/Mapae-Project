@@ -117,7 +117,7 @@ class MapaeJudge:
         self.notebook_id = notebook_id
 
         # Initialize Gemini 2.0 Flash (stable fast model)
-        self._model_name = "gemini-2.0-flash"
+        self._model_name = "gemini-3.5-flash"
         if self.api_key:
             if _NEW_SDK:
                 self._client = _genai.Client(api_key=self.api_key)

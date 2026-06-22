@@ -13,7 +13,7 @@ Mapae is an intelligent policy compliance auditor that analyzes game design docu
 ## 🎯 Key Features
 
 ### 🚀 Hybrid Analysis Engine
-- **Fast Mode**: Quick analysis using Google Gemini 3 Flash API
+- **Fast Mode**: Quick analysis using Google Gemini 3.5 Flash API
 - **Precision Mode**: Deep analysis with NotebookLM integration for grounded, citation-backed insights
 
 ### 🌍 Multi-Market Analysis
@@ -40,7 +40,7 @@ Mapae is an intelligent policy compliance auditor that analyzes game design docu
 graph LR
     A[User] -->|Upload Document| B[Streamlit UI]
     B -->|Project Info| C{Analysis Mode}
-    C -->|Fast Mode| D[Gemini 3 Flash API]
+    C -->|Fast Mode| D[Gemini 3.5 Flash API]
     C -->|Precision Mode| E[NotebookLM MCP]
     D -->|AI Response| F[Response Parser]
     E -->|Grounded Analysis| F
@@ -69,7 +69,7 @@ graph LR
 | Category | Technology |
 |----------|-----------|
 | **Framework** | Streamlit 1.32+ |
-| **AI Engine** | Google Gemini 3 Flash Preview |
+| **AI Engine** | Google Gemini 3.5 Flash |
 | **Deep Analysis** | NotebookLM MCP |
 | **Document Processing** | PyPDF2, python-docx |
 | **Report Generation** | ReportLab, Markdown |
@@ -147,7 +147,7 @@ The application will open in your browser at `http://localhost:8501`
 ### Analysis Modes
 
 #### Fast Mode (Default)
-- Uses Gemini 3 Flash API
+- Uses Gemini 3.5 Flash API
 - Quick turnaround time
 - Suitable for initial reviews
 
