@@ -23,7 +23,7 @@ Version: 1.0.0
 
 import streamlit as st
 from mapae_input import MapaeInput
-from mapae_judge import MapaeJudge
+from mapae_judge import MapaeJudge, RISK_DISCLAIMER
 from config_loader import Config
 import io
 from reportlab.lib.pagesizes import letter
@@ -208,13 +208,13 @@ def render_sidebar():
         use_precision_mode = st.checkbox(
             "✅ 정밀 검사 모드 (NotebookLM 연동)",
             value=False,
-            help="기본: 빠른 Gemini 3.0 Flash API 사용 (일반 마켓 정책)\n체크: NotebookLM 브라우저 자동화로 심층 분석 (사내 규정 등 비공개 데이터)"
+            help="기본: 빠른 Gemini 2.0 Flash API 사용 (일반 마켓 정책)\n체크: NotebookLM 브라우저 자동화로 심층 분석 (사내 규정 등 비공개 데이터)"
         )
-        
+
         if use_precision_mode:
             st.info("🔬 정밀 검사 모드: NotebookLM 브라우저 자동화 활성화 (느림)")
         else:
-            st.success("⚡ 빠른 모드: Gemini 3.0 Flash API 사용 (권장)")
+            st.success("⚡ 빠른 모드: Gemini 2.0 Flash API 사용 (권장)")
         
         st.divider()
         
@@ -230,7 +230,13 @@ def render_sidebar():
             st.info("💡 `config.txt` 파일에서 GOOGLE_API_KEY를 설정하세요")
         
         st.divider()
-        
+
+        # Policy update panel
+        st.markdown("### 📡 정책 업데이트")
+        _render_policy_panel()
+
+        st.divider()
+
         # Portfolio info
         st.markdown("""
         <div style='text-align: center; color: #888; font-size: 0.8rem; margin-top: 2rem;'>
@@ -238,8 +244,40 @@ def render_sidebar():
             <p>Streamlit & Google AI 기반</p>
         </div>
         """, unsafe_allow_html=True)
-        
+
         return use_precision_mode
+
+
+def _render_policy_panel():
+    """Show policy snapshot status and optional refresh button in sidebar."""
+    try:
+        from policy_updater import SNAPSHOT_DIR, POLICY_SOURCES
+        from pathlib import Path
+
+        status_lines = []
+        for key, src in POLICY_SOURCES.items():
+            snap_dir = SNAPSHOT_DIR / key
+            snaps = sorted(snap_dir.glob("*.txt"), reverse=True) if snap_dir.exists() else []
+            if snaps:
+                status_lines.append(f"✅ {src['name'][:12]}… ({snaps[0].stem})")
+            else:
+                status_lines.append(f"⬜ {src['name'][:12]}… (미수집)")
+
+        for line in status_lines:
+            st.caption(line)
+
+        if st.button("🔄 정책 지금 업데이트", use_container_width=True,
+                     help="공개 정책 페이지 3곳을 fetch하고 diff를 저장합니다 (10-20초)"):
+            with st.spinner("정책 페이지 수집 중…"):
+                from policy_updater import update_all_policies, get_changes_summary
+                results = update_all_policies()
+                summary = get_changes_summary(results)
+            # Store for display on main area after sidebar closes
+            st.session_state["policy_update_summary"] = summary
+            st.rerun()
+
+    except Exception as e:
+        st.caption(f"정책 추적 모듈 오류: {e}")
 
 
 def render_header():
@@ -301,35 +339,53 @@ def render_platform_report(platform_name: str, report: dict, judge: MapaeJudge):
     if not report:
         st.warning(f"{platform_name}에 대한 분석 결과가 없습니다")
         return
-    
+
     verdict = report.get("verdict", "UNKNOWN")
     emoji = judge.get_verdict_emoji(verdict)
-    
+
     # Verdict badge
     render_verdict_badge(verdict, emoji)
-    
+
+    # REJECT-Risk score
+    reject_risk = report.get("reject_risk")
+    if reject_risk is not None:
+        risk_color = (
+            "🟢" if reject_risk < 30 else
+            "🟡" if reject_risk < 65 else
+            "🔴"
+        )
+        st.markdown(f"**{risk_color} REJECT-Risk: {reject_risk}%**")
+        st.progress(reject_risk / 100)
+        st.caption(report.get("reject_risk_disclaimer", RISK_DISCLAIMER))
+
+    # Policy citation from local RAG
+    citation = report.get("policy_citation")
+    if citation:
+        with st.expander("📎 로컬 정책 DB 근거 인용"):
+            st.info(citation)
+
     # Issues section
     st.markdown("### 🚨 발견된 문제점")
     issues = report.get("issues", [])
-    
+
     if issues:
         for i, issue in enumerate(issues, 1):
             st.markdown(f"{i}. {issue}")
     else:
         st.success("문제점이 발견되지 않았습니다!")
-    
+
     st.divider()
-    
+
     # Recommendations section
     st.markdown("### 💡 권장사항")
     recommendations = report.get("recommendations", [])
-    
+
     if recommendations:
         for i, rec in enumerate(recommendations, 1):
             st.markdown(f"{i}. {rec}")
     else:
         st.info("현재 특별한 권장사항이 없습니다.")
-    
+
     # Raw report (expandable)
     with st.expander("📄 전체 보고서 보기"):
         st.text(report.get("raw_text", "상세 보고서가 없습니다."))
@@ -481,6 +537,18 @@ def main():
     # Render UI and get precision mode setting
     use_precision_mode = render_sidebar()
     render_header()
+
+    # Show policy update results if a refresh was just triggered
+    if st.session_state.get("policy_update_summary"):
+        st.markdown(st.session_state.pop("policy_update_summary"))
+        st.divider()
+
+    # Mandatory disclaimer banner
+    st.info(
+        "⚠️ **이 도구는 공개 정책 기반 추정을 제공합니다.** "
+        "REJECT-Risk 스코어는 실 심사 데이터에서 도출된 수치가 아니며, "
+        "법률 자문이 아닙니다. 실제 제출 전 각 플랫폼 정책을 직접 확인하세요."
+    )
     
     # Check API key from config
     api_key = config.get('GOOGLE_API_KEY')

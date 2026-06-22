@@ -8,47 +8,105 @@ This module contains the core AI analysis engine that powers Mapae's
 policy compliance auditing capabilities.
 
 Features:
-- Dual-mode analysis (Gemini 3 Flash API / NotebookLM MCP)
+- Dual-mode analysis (Gemini 2.0 Flash API / NotebookLM MCP)
 - Intelligent response parsing with multi-platform support
 - Robust error handling and fallback mechanisms
 - Structured output generation for UI rendering
+- REJECT-Risk scoring (policy-based estimate, not real review data)
+- Local RAG citation from stored policy snapshots
 
 The MapaeJudge class handles:
 1. AI model initialization and configuration
 2. Prompt generation and context management
 3. Response parsing and data extraction
 4. Multi-platform report generation (Google/Apple/Toss)
+5. Deterministic REJECT-Risk scoring per platform
+6. Policy citation via local vector DB (if available)
 
 Author: Portfolio Project
 License: MIT
-Version: 1.0.0
+Version: 1.1.0
 """
 
 
 import re
 from typing import Dict, Optional, List
-import google.generativeai as genai
 import os
 import subprocess
 import json
+
+# Use new google-genai SDK (google-generativeai is deprecated as of 0.8.x)
+try:
+    from google import genai as _genai
+    from google.genai import types as _genai_types
+    _NEW_SDK = True
+except ImportError:
+    import google.generativeai as _genai_legacy  # type: ignore[import]
+    _NEW_SDK = False
+
+
+# Keyword → base risk score mapping (used for deterministic scoring)
+_RISK_KEYWORDS: Dict[str, int] = {
+    # Critical (25-35)
+    "도박": 35, "gambling": 35, "카지노": 35, "베팅": 30, "배팅": 30,
+    "미성년자": 32, "아동": 32, "청소년": 28, "minor": 32, "child safety": 35,
+    "불법": 30, "illegal": 30, "금지": 25, "prohibited": 25,
+    # High (18-25)
+    "가챠": 25, "gacha": 25, "확률형": 25, "뽑기": 20, "랜덤박스": 22, "loot box": 22,
+    "개인정보": 22, "privacy": 22, "데이터 수집": 20,
+    "실제 돈": 25, "real money": 25, "현금": 20,
+    "사기": 28, "fraud": 28, "기만": 22, "misleading": 22, "허위": 22,
+    # Medium (10-18)
+    "연령": 15, "age rating": 15, "심의": 12, "등급": 12,
+    "인앱 결제": 12, "iap": 12, "구독": 10,
+    "광고": 10, "ads": 10, "advertisement": 10,
+    "위반": 15, "violation": 15,
+    # Low (5-10)
+    "수정": 5, "권장": 5, "주의": 7, "warning": 7,
+}
+
+# Platform-specific strictness multipliers
+_PLATFORM_MULT: Dict[str, float] = {
+    "apple": 1.15,   # App Store is stricter
+    "google": 1.00,
+    "toss": 0.90,    # Toss has narrower scope
+}
+
+# Verdict base ranges
+_VERDICT_BASE: Dict[str, int] = {
+    "PASS": 8,
+    "WARNING": 38,
+    "REJECT": 68,
+    "UNKNOWN": 22,
+    "ERROR": 22,
+}
+_VERDICT_CAP: Dict[str, int] = {
+    "PASS": 30,
+    "WARNING": 65,
+    "REJECT": 97,
+    "UNKNOWN": 50,
+    "ERROR": 50,
+}
+
+RISK_DISCLAIMER = "⚠️ 정책 기반 추정 · 실 심사 데이터 아님 · 법률자문 아님"
 
 
 class MapaeJudge:
     """
     AI judge for analyzing game design documents against platform policies.
-    
+
     Supports:
     - Google Play Store policies
     - Apple App Store policies
     - Toss platform policies
-    
+
     Uses NotebookLM MCP if available, otherwise falls back to Gemini.
     """
-    
+
     def __init__(self, api_key: Optional[str] = None, use_notebooklm: bool = False, notebook_id: Optional[str] = None):
         """
         Initialize the judge with AI backend.
-        
+
         Args:
             api_key: Google Generative AI API key (optional, can use env var)
             use_notebooklm: Whether to use NotebookLM MCP
@@ -57,13 +115,29 @@ class MapaeJudge:
         self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
         self.use_notebooklm = use_notebooklm
         self.notebook_id = notebook_id
-        
-        # Initialize Gemini 3 Flash Preview (latest stable model)
+
+        # Initialize Gemini 2.0 Flash (stable fast model)
+        self._model_name = "gemini-2.0-flash"
         if self.api_key:
-            genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel('gemini-3-flash-preview')
+            if _NEW_SDK:
+                self._client = _genai.Client(api_key=self.api_key)
+            else:
+                _genai_legacy.configure(api_key=self.api_key)
+                self._legacy_model = _genai_legacy.GenerativeModel(self._model_name)
+            self.model = True  # sentinel: API key present
         else:
+            self._client = None
             self.model = None
+
+        # Optional RAG: load policy snapshots into local vector DB if available
+        self.rag = None
+        try:
+            from policy_rag import PolicyRAG
+            rag = PolicyRAG()
+            rag.load_snapshots()
+            self.rag = rag
+        except Exception:
+            pass
             
     def analyze(self, prompt: str) -> Dict[str, Dict]:
         """
@@ -139,28 +213,39 @@ class MapaeJudge:
     
     def _query_gemini(self, prompt: str) -> str:
         """
-        Query Gemini AI with the prompt.
-        
+        Query Gemini AI with the prompt using google-genai SDK.
+
         Args:
             prompt: Analysis prompt
-            
+
         Returns:
             str: Raw AI response
         """
         if not self.model:
             raise ValueError("AI 모델이 초기화되지 않았습니다. config.txt에서 GOOGLE_API_KEY를 설정해주세요.")
-        
-        # Generate response with safety settings
-        response = self.model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.3,  # Lower temperature for more consistent analysis
-                "top_p": 0.95,
-                "top_k": 40,
-                "max_output_tokens": 8192,
-            }
-        )
-        
+
+        if _NEW_SDK:
+            response = self._client.models.generate_content(
+                model=self._model_name,
+                contents=prompt,
+                config=_genai_types.GenerateContentConfig(
+                    temperature=0.3,
+                    top_p=0.95,
+                    top_k=40,
+                    max_output_tokens=8192,
+                ),
+            )
+        else:
+            response = self._legacy_model.generate_content(
+                prompt,
+                generation_config={
+                    "temperature": 0.3,
+                    "top_p": 0.95,
+                    "top_k": 40,
+                    "max_output_tokens": 8192,
+                },
+            )
+
         return response.text
     
     def _parse_response(self, raw_response: str) -> Dict[str, Dict]:
@@ -200,32 +285,34 @@ class MapaeJudge:
         
         # Parse each platform report
         if google_match:
-            results["google"] = self._parse_platform_report(google_match.group(1))
-        
+            results["google"] = self._parse_platform_report(google_match.group(1), "google")
+
         if apple_match:
-            results["apple"] = self._parse_platform_report(apple_match.group(1))
-            
+            results["apple"] = self._parse_platform_report(apple_match.group(1), "apple")
+
         if toss_match:
-            results["toss"] = self._parse_platform_report(toss_match.group(1))
-        
+            results["toss"] = self._parse_platform_report(toss_match.group(1), "toss")
+
         # Fallback: if no delimiters found, create unified report
         if not any(results.values()):
-            unified_report = self._parse_platform_report(raw_response)
+            unified_report = self._parse_platform_report(raw_response, "google")
             results["google"] = unified_report
-            results["apple"] = unified_report
-            results["toss"] = unified_report
+            results["apple"] = self._parse_platform_report(raw_response, "apple")
+            results["toss"] = self._parse_platform_report(raw_response, "toss")
             
         return results
     
-    def _parse_platform_report(self, report_text: str) -> Dict:
+    def _parse_platform_report(self, report_text: str, platform_key: str = "unknown") -> Dict:
         """
         Parse a single platform report into structured data.
-        
+
         Args:
             report_text: Text of platform-specific report
-            
+            platform_key: Platform identifier for risk scoring (google/apple/toss)
+
         Returns:
-            Dict: Structured report with verdict, issues, recommendations
+            Dict: Structured report with verdict, issues, recommendations,
+                  reject_risk score, and optional policy citation
         """
         # Extract verdict (support both English and Korean)
         verdict_match = re.search(
@@ -234,7 +321,7 @@ class MapaeJudge:
             re.IGNORECASE
         )
         verdict = verdict_match.group(1).upper() if verdict_match else "UNKNOWN"
-        
+
         # Extract issues (support both English and Korean)
         issues_match = re.search(
             r'(?:Issues?|문제점):(.*?)(?=(?:Recommendations?|권장사항):|$)',
@@ -243,7 +330,7 @@ class MapaeJudge:
         )
         issues_text = issues_match.group(1) if issues_match else ""
         issues = self._extract_list_items(issues_text)
-        
+
         # Extract recommendations (support both English and Korean)
         rec_match = re.search(
             r'(?:Recommendations?|권장사항):(.*?)$',
@@ -252,13 +339,52 @@ class MapaeJudge:
         )
         rec_text = rec_match.group(1) if rec_match else ""
         recommendations = self._extract_list_items(rec_text)
-        
+
+        # Deterministic REJECT-Risk score
+        reject_risk = self._calculate_reject_risk(verdict, issues, platform_key)
+
+        # Optional RAG citation
+        policy_citation = None
+        if self.rag and issues:
+            try:
+                policy_citation = self.rag.get_citation_for_issue(" ".join(issues[:3]))
+            except Exception:
+                pass
+
         return {
             "verdict": verdict,
             "issues": issues,
             "recommendations": recommendations,
-            "raw_text": report_text.strip()
+            "raw_text": report_text.strip(),
+            "reject_risk": reject_risk,
+            "reject_risk_disclaimer": RISK_DISCLAIMER,
+            "policy_citation": policy_citation,
         }
+
+    def _calculate_reject_risk(self, verdict: str, issues: List[str], platform_key: str) -> int:
+        """
+        Compute REJECT-Risk score 0-100 deterministically.
+
+        Algorithm:
+        1. Start from verdict-based range base
+        2. Add keyword-weighted issue severity (capped at +30)
+        3. Apply platform strictness multiplier
+        4. Clamp to verdict-specific ceiling
+
+        NOTE: This is a policy-based ESTIMATE. Not derived from real review outcome data.
+        """
+        base = _VERDICT_BASE.get(verdict, 22)
+        cap = _VERDICT_CAP.get(verdict, 50)
+
+        issue_text = " ".join(issues).lower()
+        keyword_bonus = 0
+        for kw, score in _RISK_KEYWORDS.items():
+            if kw.lower() in issue_text:
+                keyword_bonus = min(keyword_bonus + score, 30)
+
+        mult = _PLATFORM_MULT.get(platform_key, 1.0)
+        raw = (base + keyword_bonus) * mult
+        return max(0, min(int(raw), cap))
     
     def _extract_list_items(self, text: str) -> List[str]:
         """

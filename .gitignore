@@ -3,6 +3,11 @@
 
 # Configuration files with sensitive data
 config.txt
+.env
+.env.local
+
+# Local vector DB (chromadb binary — not tracked)
+chroma_db/
 
 # Python
 __pycache__/

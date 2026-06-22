@@ -1,5 +1,9 @@
 # Mapae (마패) - AI Powered Game Policy Auditor
 
+> **[작동 프로토타입 · 심사 정확도 측정전 · 법률자문 아님]**
+> 모든 REJECT-Risk 스코어 및 판정은 *공개 정책 문서 기반 추정*이며 실 심사 데이터·통계에서 도출된 수치가 아닙니다.
+> 이 도구는 법률 자문을 제공하지 않습니다.
+
 **Automated compliance analysis for game developers targeting multiple app stores**
 
 Mapae is an intelligent policy compliance auditor that analyzes game design documents against Google Play Store, Apple App Store, and Toss platform policies using advanced AI technology.
