@@ -45,205 +45,155 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for Dark Navy & Gold theme
+# Design system: deep-blue brand + coral accent (6:3:1) · IBM Plex Sans KR · OKLCH tokens
 st.markdown("""
 <style>
-    /* Main theme colors */
-    :root {
-        --primary-navy: #1a2332;
-        --accent-gold: #d4af37;
-        --success-green: #28a745;
-        --warning-orange: #ffc107;
-        --danger-red: #dc3545;
-    }
-    
-    /* Header styling */
-    .main-header {
-        background: linear-gradient(135deg, #1a2332 0%, #2d3e50 100%);
-        padding: 2rem;
-        border-radius: 10px;
-        margin-bottom: 2rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    
-    .main-title {
-        color: #d4af37 !important;
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin: 0;
-        text-align: center;
-    }
-    
-    .main-subtitle {
-        color: #ffffff !important;
-        font-size: 1.2rem;
-        text-align: center;
-        margin-top: 0.5rem;
-    }
-    
-    /* Verdict badges */
-    .verdict-badge {
-        padding: 1rem;
-        border-radius: 8px;
-        margin: 1rem 0;
-        font-size: 1.3rem;
-        font-weight: bold;
-        text-align: center;
-    }
-    
-    .verdict-pass {
-        background-color: #d4edda;
-        color: #155724;
-        border: 2px solid #28a745;
-    }
-    
-    .verdict-warning {
-        background-color: #fff3cd;
-        color: #856404;
-        border: 2px solid #ffc107;
-    }
-    
-    .verdict-reject {
-        background-color: #f8d7da;
-        color: #721c24;
-        border: 2px solid #dc3545;
-    }
-    
-    /* Sidebar styling */
-    [data-testid="stSidebar"] {
-        background-color: #1a2332;
-    }
-    
-    [data-testid="stSidebar"] .sidebar-content {
-        color: #ffffff;
-    }
-    
-    /* Force all sidebar text to be white */
-    [data-testid="stSidebar"] * {
-        color: #ffffff !important;
-    }
-    
-    /* Sidebar headers */
-    [data-testid="stSidebar"] h1,
-    [data-testid="stSidebar"] h2,
-    [data-testid="stSidebar"] h3,
-    [data-testid="stSidebar"] h4,
-    [data-testid="stSidebar"] h5,
-    [data-testid="stSidebar"] h6 {
-        color: #ffffff !important;
-    }
-    
-    /* Sidebar paragraphs and text */
-    [data-testid="stSidebar"] p,
-    [data-testid="stSidebar"] span,
-    [data-testid="stSidebar"] li,
-    [data-testid="stSidebar"] label {
-        color: #ffffff !important;
-    }
-    
-    /* Sidebar markdown content */
-    [data-testid="stSidebar"] .stMarkdown {
-        color: #ffffff !important;
-    }
-    
-    /* Button styling */
-    .stButton > button {
-        background-color: #d4af37;
-        color: #1a2332;
-        font-weight: bold;
-        border: none;
-        padding: 0.75rem 2rem;
-        border-radius: 5px;
-        transition: all 0.3s;
-    }
-    
-    .stButton > button:hover {
-        background-color: #c19b2f;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(212, 175, 55, 0.3);
-    }
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap');
+
+:root {
+    --bg:           oklch(98.5% 0.002 70);
+    --surface:      oklch(100% 0 0);
+    --ink:          oklch(14% 0.005 70);
+    --ink-soft:     oklch(42% 0.012 70);
+    --brand:        oklch(45% 0.12 250);
+    --brand-strong: oklch(35% 0.13 250);
+    --accent:       oklch(65% 0.18 25);
+    --warn-color:   oklch(75% 0.15 75);
+    --line:         oklch(91.5% 0.005 70);
+    --radius:       14px;
+}
+
+/* Base */
+html, body, [class*="css"], .stApp {
+    font-family: 'IBM Plex Sans KR', sans-serif;
+    color: var(--ink);
+    word-break: keep-all;
+}
+.stApp { background: var(--bg); }
+.block-container { max-width: 1100px; padding-top: 2.2rem; }
+h1, h2, h3 { letter-spacing: -.01em; font-weight: 600; word-break: keep-all; }
+
+/* Card */
+.card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+}
+
+/* Header (clean, no gradient) */
+.page-header { padding: 2rem 0 1.2rem; border-bottom: 1px solid var(--line); margin-bottom: 1.6rem; }
+.page-title  { font-size: 1.7rem; font-weight: 700; color: var(--ink); margin: 0; letter-spacing: -.02em; }
+.page-sub    { font-size: .9rem; color: var(--ink-soft); margin: .3rem 0 0; }
+
+/* Verdict chips — PASS=brand, WARNING=warn, REJECT=accent(coral), border-only */
+.verdict-chip {
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: .85rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    margin: .5rem 0 1rem;
+}
+.verdict-pass    { border: 1.5px solid var(--brand);      color: var(--brand); }
+.verdict-warning { border: 1.5px solid var(--warn-color); color: var(--warn-color); }
+.verdict-reject  { border: 1.5px solid var(--accent);     color: var(--accent); }
+.verdict-unknown,
+.verdict-error   { border: 1.5px solid var(--ink-soft);   color: var(--ink-soft); }
+
+/* Button — brand deep blue, no shadow */
+.stButton > button {
+    background: var(--brand);
+    color: #fff;
+    border: 0;
+    border-radius: 10px;
+    font-weight: 600;
+    font-family: 'IBM Plex Sans KR', sans-serif;
+}
+.stButton > button:hover { background: var(--brand-strong); }
+
+/* KPI metric value */
+[data-testid="stMetricValue"] {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--brand);
+}
+
+/* Sidebar — warm gray, border instead of shadow */
+[data-testid="stSidebar"] {
+    background: oklch(96% 0.003 70);
+    border-right: 1px solid var(--line);
+}
+[data-testid="stSidebar"] * { color: var(--ink) !important; }
+[data-testid="stSidebar"] .stCaption { color: var(--ink-soft) !important; }
+
+/* Code / mono */
+code, pre { font-family: 'JetBrains Mono', monospace; }
+
+/* Progress bar — brand */
+[data-testid="stProgress"] > div > div { background: var(--brand); }
 </style>
 """, unsafe_allow_html=True)
 
 
 def render_sidebar():
-    """Render the sidebar with branding and usage guide. Returns precision mode setting."""
+    """Render the sidebar. Returns precision mode setting."""
     with st.sidebar:
-        # Logo and branding
+        # Branding
         st.markdown("""
-        <div style='text-align: center; padding: 1rem;'>
-            <h1 style='color: #d4af37; font-size: 2.5rem; margin: 0;'>🎮</h1>
-            <h2 style='color: #d4af37; margin: 0.5rem 0;'>마패 (Mapae)</h2>
-            <p style='color: #ffffff; font-size: 0.9rem;'>범용 심의 진단 도구</p>
+        <div style='padding:.8rem 0 1rem;'>
+            <div style='font-size:1.15rem;font-weight:700;color:var(--ink);letter-spacing:-.01em;'>마패 (Mapae)</div>
+            <div style='font-size:.8rem;color:var(--ink-soft);margin-top:3px;'>게임 정책 컴플라이언스 진단</div>
         </div>
         """, unsafe_allow_html=True)
-        
+
         st.divider()
-        
+
         # Usage guide
-        st.markdown("### 📖 사용 가이드")
+        st.markdown("**사용 방법**")
         st.markdown("""
-        **마패에 오신 것을 환영합니다!**
-        
-        이 도구는 게임 개발자가 제출 전에 잠재적인 정책 문제를 진단하는 데 도움을 줍니다.
-        
-        **사용 방법:**
-        1. 게임 정보를 입력하세요
-        2. 기획서를 업로드하거나 텍스트를 붙여넣으세요
-        3. "분석하기" 버튼을 클릭하여 즉시 진단받으세요
-        4. 각 플랫폼별 결과를 검토하세요
-        5. 전문 보고서를 내보내세요
-        
-        **지원 플랫폼:**
-        - ✅ 구글 플레이 스토어
-        - ✅ 애플 앱스토어
-        - ✅ 토스 플랫폼
+1. 게임 정보 입력
+2. 기획서 업로드 또는 붙여넣기
+3. 분석 실행
+4. 플랫폼별 결과 검토
+5. 보고서 내보내기
+
+지원 플랫폼: Google Play · App Store · Toss
         """)
-        
+
         st.divider()
-        
-        # Analysis Mode Selection
-        st.markdown("### ⚡ 분석 모드")
-        
+
+        # Analysis mode
+        st.markdown("**분석 모드**")
         use_precision_mode = st.checkbox(
-            "✅ 정밀 검사 모드 (NotebookLM 연동)",
+            "정밀 검사 (NotebookLM 연동)",
             value=False,
-            help="기본: 빠른 Gemini 3.5 Flash API 사용 (일반 마켓 정책)\n체크: NotebookLM 브라우저 자동화로 심층 분석 (사내 규정 등 비공개 데이터)"
+            help="기본: Gemini 3.5 Flash 빠른 분석\n체크: NotebookLM 심층 분석 (느림)"
         )
-
         if use_precision_mode:
-            st.info("🔬 정밀 검사 모드: NotebookLM 브라우저 자동화 활성화 (느림)")
+            st.caption("NotebookLM 모드 활성화")
         else:
-            st.success("⚡ 빠른 모드: Gemini 3.5 Flash API 사용 (권장)")
-        
-        st.divider()
-        
-        # Configuration status
-        st.markdown("### 🔑 설정 상태")
-        
-        api_key = config.get('GOOGLE_API_KEY')
-        
-        if api_key:
-            st.success("✅ API 키 설정 완료")
-        else:
-            st.error("❌ API 키 미설정")
-            st.info("💡 `config.txt` 파일에서 GOOGLE_API_KEY를 설정하세요")
-        
+            st.caption("Gemini 3.5 Flash 모드")
+
         st.divider()
 
-        # Policy update panel
-        st.markdown("### 📡 정책 업데이트")
+        # API key status
+        st.markdown("**설정 상태**")
+        api_key = config.get('GOOGLE_API_KEY')
+        if api_key:
+            st.caption("API 키 설정됨")
+        else:
+            st.caption("API 키 미설정 — config.txt 확인")
+
+        st.divider()
+
+        # Policy update
+        st.markdown("**정책 업데이트**")
         _render_policy_panel()
 
         st.divider()
 
-        # Portfolio info
-        st.markdown("""
-        <div style='text-align: center; color: #888; font-size: 0.8rem; margin-top: 2rem;'>
-            <p>포트폴리오 프로젝트 2026</p>
-            <p>Streamlit & Google AI 기반</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.caption("포트폴리오 프로젝트 2026")
 
         return use_precision_mode
 
@@ -281,45 +231,36 @@ def _render_policy_panel():
 
 
 def render_header():
-    """Render the main header."""
+    """Render the main header — clean, no gradient."""
     st.markdown("""
-    <div class='main-header'>
-        <h1 class='main-title'>마패: 범용 게임 심의 진단 솔루션</h1>
-        <p class='main-subtitle'>게임 개발자를 위한 자동화된 정책 준수 분석</p>
+    <div class='page-header'>
+        <div class='page-title'>마패 — 게임 정책 컴플라이언스 진단</div>
+        <div class='page-sub'>Google Play · App Store · Toss 기준 자동 분석 &nbsp;·&nbsp; 정책 기반 추정 · 법률자문 아님</div>
     </div>
     """, unsafe_allow_html=True)
 
 
 def render_verdict_badge(verdict: str, emoji: str):
-    """Render a verdict badge with appropriate styling."""
-    verdict_class = f"verdict-{verdict.lower()}"
-    
-    st.markdown(f"""
-    <div class='verdict-badge {verdict_class}'>
-        {emoji} {verdict}
-    </div>
-    """, unsafe_allow_html=True)
+    """Render a verdict chip — border only, no filled background."""
+    chip_class = f"verdict-{verdict.lower()}"
+    label = {"PASS": "PASS", "WARNING": "WARNING", "REJECT": "REJECT",
+             "UNKNOWN": "UNKNOWN", "ERROR": "ERROR"}.get(verdict.upper(), verdict)
+    st.markdown(f"<span class='verdict-chip {chip_class}'>{label}</span>",
+                unsafe_allow_html=True)
 
 
 def render_analysis_results(results: dict, judge: MapaeJudge):
     """Render analysis results in tabbed layout."""
-    st.markdown("## 📊 분석 결과")
-    
-    # Verdict system explanation
-    st.info("""
-    **📋 판정 시스템 안내**
-    
-    - ✅ **PASS**: 정책 준수, 문제 없음 - 현재 상태로 출시 가능
-    - ⚠️ **WARNING**: 주의 필요, 일부 수정 권장 - 검토 후 출시 권장
-    - ❌ **REJECT**: 정책 위반, 반드시 수정 필요 - 수정 없이 출시 불가
-    - ❓ **UNKNOWN**: 판정 불가 - AI가 명확한 판정을 내리지 못한 경우
-    - 🔴 **ERROR**: 분석 중 오류 발생 - 다시 시도해주세요
-    """)
-    
+    st.markdown("### 분석 결과")
+
+    st.caption(
+        "PASS — 정책 준수 &nbsp;·&nbsp; WARNING — 수정 권장 &nbsp;·&nbsp; REJECT — 출시 전 반드시 수정 &nbsp;·&nbsp; "
+        "정책 기반 추정 · 실 심사 데이터 아님"
+    )
+
     st.divider()
-    
-    # Create tabs for each platform
-    tab1, tab2, tab3 = st.tabs(["🟢 구글 플레이", "🍎 앱스토어", "💳 토스"])
+
+    tab1, tab2, tab3 = st.tabs(["Google Play", "App Store", "Toss"])
     
     # Google Play tab
     with tab1:
@@ -349,46 +290,48 @@ def render_platform_report(platform_name: str, report: dict, judge: MapaeJudge):
     # REJECT-Risk score
     reject_risk = report.get("reject_risk")
     if reject_risk is not None:
-        risk_color = (
-            "🟢" if reject_risk < 30 else
-            "🟡" if reject_risk < 65 else
-            "🔴"
-        )
-        st.markdown(f"**{risk_color} REJECT-Risk: {reject_risk}%**")
-        st.progress(reject_risk / 100)
+        col_a, col_b = st.columns([3, 1])
+        with col_a:
+            st.progress(reject_risk / 100)
+        with col_b:
+            st.markdown(
+                f"<span style='font-family:JetBrains Mono,monospace;font-size:.95rem;"
+                f"font-weight:600;color:var(--accent);'>{reject_risk}%</span>",
+                unsafe_allow_html=True,
+            )
         st.caption(report.get("reject_risk_disclaimer", RISK_DISCLAIMER))
 
     # Policy citation from local RAG
     citation = report.get("policy_citation")
     if citation:
-        with st.expander("📎 로컬 정책 DB 근거 인용"):
-            st.info(citation)
+        with st.expander("근거 인용 (로컬 정책 DB)"):
+            st.caption(citation)
 
-    # Issues section
-    st.markdown("### 🚨 발견된 문제점")
+    st.divider()
+
+    # Issues
+    st.markdown("**발견된 문제점**")
     issues = report.get("issues", [])
-
     if issues:
         for i, issue in enumerate(issues, 1):
             st.markdown(f"{i}. {issue}")
     else:
-        st.success("문제점이 발견되지 않았습니다!")
+        st.caption("문제점이 발견되지 않았습니다.")
 
     st.divider()
 
-    # Recommendations section
-    st.markdown("### 💡 권장사항")
+    # Recommendations
+    st.markdown("**권장사항**")
     recommendations = report.get("recommendations", [])
-
     if recommendations:
         for i, rec in enumerate(recommendations, 1):
             st.markdown(f"{i}. {rec}")
     else:
-        st.info("현재 특별한 권장사항이 없습니다.")
+        st.caption("권장사항 없음")
 
-    # Raw report (expandable)
-    with st.expander("📄 전체 보고서 보기"):
-        st.text(report.get("raw_text", "상세 보고서가 없습니다."))
+    # Raw report
+    with st.expander("전체 원문 보기"):
+        st.text(report.get("raw_text", "—"))
 
 
 def generate_pdf_report(project_info: dict, results: dict, judge: MapaeJudge) -> bytes:
@@ -413,16 +356,16 @@ def generate_pdf_report(project_info: dict, results: dict, judge: MapaeJudge) ->
         'CustomTitle',
         parent=styles['Heading1'],
         fontSize=24,
-        textColor='#1a2332',
+        textColor='#1b1a17',
         alignment=TA_CENTER,
         spaceAfter=30
     )
-    
+
     heading_style = ParagraphStyle(
         'CustomHeading',
         parent=styles['Heading2'],
         fontSize=16,
-        textColor='#d4af37',
+        textColor='#2d4f8a',
         spaceAfter=12
     )
     
@@ -544,10 +487,10 @@ def main():
         st.divider()
 
     # Mandatory disclaimer banner
-    st.info(
-        "⚠️ **이 도구는 공개 정책 기반 추정을 제공합니다.** "
-        "REJECT-Risk 스코어는 실 심사 데이터에서 도출된 수치가 아니며, "
-        "법률 자문이 아닙니다. 실제 제출 전 각 플랫폼 정책을 직접 확인하세요."
+    st.caption(
+        "이 도구는 공개 정책 기반 추정을 제공합니다. "
+        "REJECT-Risk 스코어는 실 심사 데이터가 아니며 법률 자문이 아닙니다. "
+        "제출 전 각 플랫폼 공식 정책을 직접 확인하세요."
     )
     
     # Check API key from config
@@ -582,14 +525,14 @@ def main():
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         analyze_button = st.button(
-            "🔍 게임 기획서 분석하기",
+            "분석 실행",
             disabled=not is_ready,
             use_container_width=True
         )
     
     # Perform analysis
     if analyze_button and is_ready:
-        with st.spinner("🤖 플랫폼 정책에 따라 게임 기획서를 분석하고 있습니다..."):
+        with st.spinner("분석 중…"):
             # Get contextualized prompt
             prompt = input_handler.get_contextualized_prompt()
             
@@ -601,7 +544,7 @@ def main():
             st.session_state['results'] = results
             st.session_state['project_info'] = input_handler.get_project_info()
         
-        st.success("✅ 분석 완료!")
+        st.success("분석 완료")
         st.rerun()
     
     # Display results
@@ -611,7 +554,7 @@ def main():
         
         # Export options
         st.divider()
-        st.markdown("## 📥 결과 내보내기")
+        st.markdown("### 내보내기")
         
         col1, col2 = st.columns(2)
         
@@ -624,7 +567,7 @@ def main():
             )
             
             st.download_button(
-                label="📄 PDF 보고서 다운로드",
+                label="PDF 다운로드",
                 data=pdf_bytes,
                 file_name=f"mapae_report_{st.session_state['project_info']['game_name'].replace(' ', '_')}.pdf",
                 mime="application/pdf",
@@ -639,7 +582,7 @@ def main():
             )
             
             st.download_button(
-                label="📋 마크다운으로 복사",
+                label="Markdown 저장",
                 data=md_report,
                 file_name=f"mapae_report_{st.session_state['project_info']['game_name'].replace(' ', '_')}.md",
                 mime="text/markdown",
